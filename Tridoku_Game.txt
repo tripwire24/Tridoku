@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tridoku</title>
+    <meta name="description" content="A unique Sudoku game with three ways to play: numbers, emojis, and fruits!">
+    <meta name="theme-color" content="#9333EA">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Tridoku">
+    <link rel="manifest" href="./manifest.json" crossorigin="use-credentials">
+    <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png">
+    <link rel="apple-touch-icon" href="./icon-192.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    <style>
+        .animate-pulse {
+            animation: pulse 1s cubic-bezier(0.4, 0, 0.6, 1);
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+        .cell-input {
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            border: none;
+            background: transparent;
+            font-size: 1.125rem;
+            font-weight: 500;
+            color: #6B46C1;
+            appearance: none;
+            cursor: pointer;
+        }
+        .cell-input:focus {
+            outline: none;
+            background-color: #F3E8FF;
+        }
+        .emoji-cell {
+            font-size: 1.5rem;
+        }
+        .fruit-cell {
+            font-size: 1.25rem;
+        }
+        .number-cell {
+            font-size: 1.125rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-md">
+        <!-- Game Header -->
+        <div class="flex justify-between items-center mb-6">
+            <div class="flex items-baseline gap-2">
+                <h1 class="text-2xl font-bold text-gray-800">Tridoku</h1>
+                <span class="text-xs text-purple-600">3 Ways to Play</span>
+            </div>
+            <div class="flex gap-2">
+                <span id="timer" class="bg-white px-4 py-2 rounded-lg shadow text-gray-600">00:00</span>
+                <span id="total-score" class="bg-white px-4 py-2 rounded-lg shadow text-gray-600">Total: 0</span>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="flex gap-2 mb-4">
+            <button 
+                onclick="confirmNewGame()"
+                class="flex-1 bg-gradient-to-r from-purple-400 to-pink-400 text-white py-3 px-4 rounded-lg shadow-md hover:from-purple-500 hover:to-pink-500 transition-all duration-200 font-medium"
+            >
+                New Game
+            </button>
+            <button 
+                onclick="resetBoard()"
+                class="w-12 h-12 flex items-center justify-center bg-white text-purple-500 rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+            >
+                ↺
+            </button>
+        </div>
+
+        <!-- Game Type Selector -->
+        <div class="flex justify-between gap-2 mb-4">
+            <button onclick="changeGameType('Sudoku')" class="flex-1 py-3 px-4 rounded-lg text-center transition-all duration-200 font-medium bg-gradient-to-r from-purple-400 to-pink-400 text-white shadow-md">Sudoku</button>
+            <button onclick="changeGameType('Emudoku')" class="flex-1 py-3 px-4 rounded-lg text-center bg-white text-gray-700 shadow hover:shadow-md">Emudoku</button>
+            <button onclick="changeGameType('Frudoku')" class="flex-1 py-3 px-4 rounded-lg text-center bg-white text-gray-700 shadow hover:shadow-md">Frudoku</button>
+        </div>
+
+        <!-- Sudoku Board -->
+        <div class="bg-white rounded-lg shadow-lg p-1 mb-4 aspect-square">
+            <div id="board" class="grid grid-cols-9 gap-px bg-gray-200 h-full">
+                <!-- Board cells will be inserted here by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Difficulty Selector -->
+        <div class="flex justify-between gap-2 mb-4">
+            <button onclick="changeDifficulty('Easy')" class="flex-1 py-3 px-4 rounded-lg text-center transition-all duration-200 font-medium bg-gradient-to-r from-purple-400 to-pink-400 text-white shadow-md">Easy</button>
+            <button onclick="changeDifficulty('Medium')" class="flex-1 py-3 px-4 rounded-lg text-center bg-white text-gray-700 shadow hover:shadow-md">Medium</button>
+            <button onclick="changeDifficulty('Hard')" class="flex-1 py-3 px-4 rounded-lg text-center bg-white text-gray-700 shadow hover:shadow-md">Hard</button>
+        </div>
+
+        <!-- Message Display -->
+        <div id="message" class="hidden w-full text-center py-3 px-4 bg-gradient-to-r from-purple-100 to-pink-100 rounded-lg shadow mb-4">
+        </div>
+
+        <!-- Next Game Button (Hidden by default) -->
+        <button 
+            id="next-game"
+            onclick="startNextGame()"
+            class="hidden w-full bg-gradient-to-r from-green-400 to-blue-400 text-white py-3 px-4 rounded-lg shadow-md hover:from-green-500 hover:to-blue-500 transition-all duration-200 font-medium mb-4"
+        >
+            Next Game
+        </button>
+    </div>
+
+    <!-- Footer -->
+    <footer class="fixed bottom-0 left-0 right-0 bg-white bg-opacity-90 shadow-lg">
+        <div class="container mx-auto px-4 py-3">
+            <p class="text-center text-xs text-gray-600">
+                © 2024 Tridoku™ | Developed by Tripwire Digital | All Rights Reserved
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        // Game state
+        let gameType = 'Sudoku';
+        let difficulty = 'Easy';
+        let board = Array(9).fill().map(() => Array(9).fill(null));
+        let initialBoard = Array(9).fill().map(() => Array(9).fill(null));
+        let time = 0;
+        let timerInterval;
+        let totalScore = 0;
+        let currentGameScore = 0;
+
+        // Game variants configuration
+        const GAME_TYPES = {
+            Sudoku: {
+                symbols: ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
+                className: 'number-cell'
+            },
+            Emudoku: {
+                symbols: ['😀', '😎', '😍', '🤔', '😴', '😇', '🤓', '😊', '😉'],
+                className: 'emoji-cell'
+            },
+            Frudoku: {
+                symbols: ['🍎', '🍌', '🍇', '🍊', '🍓', '🍐', '🍉', '🍒', '🍑'],
+                className: 'fruit-cell'
+            }
+        };
+
+        // Difficulty templates remain the same...
+        const DIFFICULTY_TEMPLATES = {
+            Easy: [
+                [5,7,8,null,6,null,null,3,null],
+                [6,1,9,null,2,3,7,8,null],
+                [8,null,3,9,null,4,6,1,5],
+                [7,null,4,1,null,null,8,null,null],
+                [5,6,null,4,3,8,null,7,null],
+                [null,null,9,null,6,5,null,null,4],
+                [null,null,2,null,4,null,null,6,null],
+                [1,null,null,7,6,9,4,null,null],
+                [4,6,2,8,5,1,9,7,null]
+            ],
+            Medium: [
+                [null,7,null,null,6,null,null,3,null],
+                [6,null,9,null,null,3,7,null,null],
+                [8,null,3,9,null,4,null,1,5],
+                [7,null,null,1,null,null,8,null,null],
+                [null,6,null,4,3,null,null,7,null],
+                [null,null,9,null,null,5,null,null,4],
+                [null,null,2,null,4,null,null,6,null],
+                [1,null,null,7,null,null,4,null,null],
+                [4,null,null,8,5,null,9,null,null]
+            ],
+            Hard: [
+                [null,null,null,null,6,null,null,null,null],
+                [6,null,null,null,null,3,null,null,null],
+                [null,null,3,9,null,null,null,1,null],
+                [null,null,null,1,null,null,null,null,null],
+                [null,6,null,null,3,null,null,7,null],
+                [null,null,null,null,null,5,null,null,4],
+                [null,null,2,null,null,null,null,6,null],
+                [1,null,null,7,null,null,null,null,null],
+                [null,null,null,null,5,null,9,null,null]
+            ]
+        };
+
+        // Modified render board function to use dropdowns for all game types
+        function renderBoard() {
+            const boardElement = document.getElementById('board');
+            boardElement.innerHTML = '';
+            
+            board.forEach((row, rowIndex) => {
+                row.forEach((cell, colIndex) => {
+                    const cellElement = document.createElement('div');
+                    cellElement.className = `
+                        relative flex items-center justify-center bg-white
+                        ${colIndex % 3 === 0 ? 'border-l-2 border-gray-400' : ''}
+                        ${rowIndex % 3 === 0 ? 'border-t-2 border-gray-400' : ''}
+                        ${colIndex === 8 ? 'border-r-2 border-gray-400' : ''}
+                        ${rowIndex === 8 ? 'border-b-2 border-gray-400' : ''}
+                    `;
+
+                    if (initialBoard[rowIndex][colIndex] === null) {
+                        const select = document.createElement('select');
+                        select.className = `cell-input ${GAME_TYPES[gameType].className}`;
+                        
+                        // Add empty option
+                        const emptyOption = document.createElement('option');
+                        emptyOption.value = '';
+                        emptyOption.text = '';
+                        select.appendChild(emptyOption);
+                        
+                        // Add symbol options
+                        GAME_TYPES[gameType].symbols.forEach(symbol => {
+                            const option = document.createElement('option');
+                            option.value = symbol;
+                            option.text = symbol;
+                            if (cell === symbol) option.selected = true;
+                            select.appendChild(option);
+                        });
+                        
+                        select.addEventListener('change', (e) => handleCellInput(e, rowIndex, colIndex));
+                        cellElement.appendChild(select);
+                    } else {
+                        const span = document.createElement('span');
+                        span.className = `text-lg font-semibold text-gray-900 ${GAME_TYPES[gameType].className}`;
+                        span.textContent = cell;
+                        cellElement.appendChild(span);
+                    }
+
+                    boardElement.appendChild(cellElement);
+                });
+            });
+        }
+
+        // Modified score functions
+        function updateScore(newScore) {
+            currentGameScore = newScore;
+            document.getElementById('total-score').textContent = `Total: ${totalScore + currentGameScore}`;
+        }
+
+        function finalizeScore() {
+            totalScore += currentGameScore;
+            document.getElementById('total-score').textContent = `Total: ${totalScore}`;
+        }
+
+        // Modified completion handling
+        function checkCompletion() {
+            if (isBoardComplete()) {
+                if (validateBoard()) {
+                    clearInterval(timerInterval);
+                    const timeBonus = Math.max(0, 1000 - time);
+                    const newScore = 1000 + timeBonus;
+                    updateScore(newScore);
+                    finalizeScore();
+                    showMessage(`Congratulations! Puzzle completed! Score: ${newScore} 🎉`);
+                    showNextGameButton();
+                } else {
+                    showMessage('The solution is incorrect. Keep trying!');
+                }
+            }
+        }
+
+        // New next game functions
+        function showNextGameButton() {
+            document.getElementById('next-game').classList.remove('hidden');
+        }
+
+        function hideNextGameButton() {
+            document.getElementById('next-game').classList.add('hidden');
+        }
+
+        function startNextGame() {
+            // Randomly select next game type
+            const types = Object.keys(GAME_TYPES);
+            const nextType = types[(types.indexOf(gameType) + 1) % types.length];
+            changeGameType(nextType);
+            hideNextGameButton();
+        }
+
+        // Modified initialization
+        function initializeBoard() {
+            generateSolutionBoard();
+            createPuzzle(difficulty);
+            if (gameType !== 'Sudoku') {
+                initialBoard = convertToSymbols(initialBoard);
+                board = convertToSymbols(board);
+            }
+
+            renderBoard();
+            resetTimer();
+            startTimer();
+            updateScore(0);
+            hideMessage();
+            hideNextGameButton();
+        }
+
+        // Solution board for validation
+        let solutionBoard;
+
+        // Convert number board to symbols based on game type
+        function convertToSymbols(numberBoard) {
+            return numberBoard.map(row => 
+                row.map(cell => 
+                    cell === null ? null : GAME_TYPES[gameType].symbols[cell - 1]
+                )
+            );
+        }
+
+        // Convert symbol back to number for validation
+        function symbolToNumber(symbol) {
+            return GAME_TYPES[gameType].symbols.indexOf(symbol) + 1;
+        }
+
+        // Generate a complete, valid solution board
+        function generateSolutionBoard() {
+            solutionBoard = Array(9).fill().map(() => Array(9).fill(null));
+            fillBoard(solutionBoard);
+        }
+
+        // Recursively fill the board to generate a valid Sudoku solution
+        function fillBoard(board) {
+            for (let row = 0; row < 9; row++) {
+                for (let col = 0; col < 9; col++) {
+                    if (board[row][col] === null) {
+                        const numbers = shuffle([...Array(9).keys()].map(x => x + 1));
+                        for (let num of numbers) {
+                            if (isValid(board, row, col, num)) {
+                                board[row][col] = num;
+                                if (fillBoard(board)) {
+                                    return true;
+                                }
+                                board[row][col] = null;
+                            }
+                        }
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        // Create a puzzle by removing numbers from the solution board based on difficulty
+        function createPuzzle(difficulty) {
+            let attempts = difficulty === 'Easy' ? 30 : difficulty === 'Medium' ? 40 : 50;
+            board = solutionBoard.map(row => [...row]);
+            initialBoard = solutionBoard.map(row => [...row]);
+
+            while (attempts > 0) {
+                let row = Math.floor(Math.random() * 9);
+                let col = Math.floor(Math.random() * 9);
+                if (board[row][col] !== null) {
+                    board[row][col] = null;
+                    initialBoard[row][col] = null;
+                    attempts--;
+                }
+            }
+        }
+
+        // Shuffle array elements
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        // Check if placing a number in a given cell is valid
+        function isValid(board, row, col, num) {
+            for (let x = 0; x < 9; x++) {
+                if (board[row][x] === num || board[x][col] === num) return false;
+            }
+            const startRow = Math.floor(row / 3) * 3;
+            const startCol = Math.floor(col / 3) * 3;
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < 3; j++) {
+                    if (board[startRow + i][startCol + j] === num) return false;
+                }
+            }
+            return true;
+        }
+
+        // Timer functions
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
+        }
+
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                time++;
+                document.getElementById('timer').textContent = formatTime(time);
+            }, 1000);
+        }
+
+        function resetTimer() {
+            clearInterval(timerInterval);
+            time = 0;
+            document.getElementById('timer').textContent = formatTime(time);
+        }
+
+        // Message functions
+        function showMessage(text) {
+            const messageEl = document.getElementById('message');
+            messageEl.textContent = text;
+            messageEl.classList.remove('hidden');
+        }
+
+        function hideMessage() {
+            document.getElementById('message').classList.add('hidden');
+        }
+
+        // Game control functions
+        function confirmNewGame() {
+            const confirmBox = document.createElement('div');
+            confirmBox.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center';
+            confirmBox.innerHTML = `
+                <div class="bg-white p-6 rounded-lg shadow-lg max-w-sm w-full">
+                    <h2 class="text-xl font-bold mb-4">Are you sure you want to start a new game?</h2>
+                    <div class="flex justify-end gap-4">
+                        <button onclick="closeConfirmBox()" class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">Cancel</button>
+                        <button onclick="newGame(); closeConfirmBox()" class="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600">Yes, Start New Game</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(confirmBox);
+        }
+
+        function closeConfirmBox() {
+            const confirmBox = document.querySelector('.fixed.inset-0.bg-black.bg-opacity-50');
+            if (confirmBox) {
+                confirmBox.remove();
+            }
+        }
+
+        function newGame() {
+            initializeBoard();
+        }
+
+        function resetBoard() {
+            board = initialBoard.map(row => [...row]);
+            renderBoard();
+            hideMessage();
+            hideNextGameButton();
+        }
+
+        function changeGameType(type) {
+            gameType = type;
+            document.querySelectorAll('[onclick^="changeGameType"]').forEach(button => {
+                if (button.textContent === type) {
+                    button.className = 'flex-1 py-3 px-4 rounded-lg text-center transition-all duration-200 font-medium bg-gradient-to-r from-purple-400 to-pink-400 text-white shadow-md';
+                } else {
+                    button.className = 'flex-1 py-3 px-4 rounded-lg text-center bg-white text-gray-700 shadow hover:shadow-md';
+                }
+            });
+            initializeBoard();
+        }
+
+        function changeDifficulty(level) {
+            difficulty = level;
+            document.querySelectorAll('[onclick^="changeDifficulty"]').forEach(button => {
+                if (button.textContent === level) {
+                    button.className = 'flex-1 py-3 px-4 rounded-lg text-center transition-all duration-200 font-medium bg-gradient-to-r from-purple-400 to-pink-400 text-white shadow-md';
+                } else {
+                    button.className = 'flex-1 py-3 px-4 rounded-lg text-center bg-white text-gray-700 shadow hover:shadow-md';
+                }
+            });
+            initializeBoard();
+        }
+
+        // Validation functions
+        function validateBoard() {
+            // Convert emoji/fruit board back to numbers for validation
+            const numericBoard = board.map(row =>
+                row.map(cell =>
+                    cell === null ? null :
+                    gameType === 'Sudoku' ? parseInt(cell) :
+                    symbolToNumber(cell)
+                )
+            );
+
+            // Check rows
+            for (let i = 0; i < 9; i++) {
+                const row = new Set(numericBoard[i].filter(x => x !== null));
+                if (row.size !== numericBoard[i].filter(x => x !== null).length) return false;
+            }
+
+            // Check columns
+            for (let i = 0; i < 9; i++) {
+                const col = new Set(numericBoard.map(row => row[i]).filter(x => x !== null));
+                if (col.size !== numericBoard.map(row => row[i]).filter(x => x !== null).length) return false;
+            }
+
+            // Check 3x3 boxes
+            for (let boxRow = 0; boxRow < 3; boxRow++) {
+                for (let boxCol = 0; boxCol < 3; boxCol++) {
+                    const box = new Set();
+                    for (let i = 0; i < 3; i++) {
+                        for (let j = 0; j < 3; j++) {
+                            const value = numericBoard[boxRow * 3 + i][boxCol * 3 + j];
+                            if (value !== null) {
+                                if (box.has(value)) return false;
+                                box.add(value);
+                            }
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+
+        function isBoardComplete() {
+            return board.every(row => row.every(cell => cell !== null));
+        }
+
+        // Initialize game on load
+        initializeBoard();
+    </script>
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registration successful');
+                    })
+                    .catch(err => {
+                        console.log('ServiceWorker registration failed: ', err);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>
