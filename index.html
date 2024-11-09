@@ -12,6 +12,9 @@
     <meta name="apple-mobile-web-app-title" content="Tridoku">
     <meta name="application-name" content="Tridoku">
     <link rel="manifest" href="manifest.json">
+   
+    <script src="https://unpkg.com/react@17/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js"></script>
     
     <!-- Icons -->
     <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
@@ -257,22 +260,67 @@
             document.getElementById('total-score').textContent = `Total: ${totalScore}`;
         }
 
-        // Modified completion handling
-        function checkCompletion() {
-            if (isBoardComplete()) {
-                if (validateBoard()) {
-                    clearInterval(timerInterval);
-                    const timeBonus = Math.max(0, 1000 - time);
-                    const newScore = 1000 + timeBonus;
-                    updateScore(newScore);
-                    finalizeScore();
-                    showMessage(`Congratulations! Puzzle completed! Score: ${newScore} 🎉`);
-                    showNextGameButton();
-                } else {
-                    showMessage('The solution is incorrect. Keep trying!');
-                }
-            }
+// Modify just this function in your existing code
+function checkCompletion() {
+    if (isBoardComplete()) {
+        if (validateBoard()) {
+            clearInterval(timerInterval);
+            const timeBonus = Math.max(0, 1000 - time);
+            const newScore = 1000 + timeBonus;
+            updateScore(newScore);
+            
+            // Trigger confetti
+            confetti({
+                particleCount: 100,
+                spread: 70,
+                origin: { y: 0.6 }
+            });
+
+            // Create and show the confirmation dialog
+            const confirmBox = document.createElement('div');
+            confirmBox.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            confirmBox.innerHTML = `
+                <div class="bg-white rounded-lg shadow-xl p-6 m-4 max-w-sm w-full">
+                    <div class="text-center">
+                        <h2 class="text-2xl font-bold text-purple-600 mb-4">
+                            Congratulations! 🎉
+                        </h2>
+                        <p class="text-gray-600 mb-4">
+                            You've completed the puzzle!
+                        </p>
+                        <p class="text-lg font-semibold text-purple-500 mb-6">
+                            Score: ${newScore} points
+                        </p>
+                        <div class="flex flex-col gap-3">
+                            <button
+                                onclick="handleNextGame()"
+                                class="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 px-6 rounded-lg font-semibold hover:from-purple-600 hover:to-pink-600 transition-all duration-200"
+                            >
+                                Next Game
+                            </button>
+                            <button
+                                onclick="closeConfirmBox()"
+                                class="w-full bg-gray-100 text-gray-700 py-3 px-6 rounded-lg font-semibold hover:bg-gray-200 transition-all duration-200"
+                            >
+                                Stay Here
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(confirmBox);
+
+            // Add the handler for next game
+            window.handleNextGame = function() {
+                finalizeScore();
+                startNextGame();
+                closeConfirmBox();
+            };
+        } else {
+            showMessage('The solution is incorrect. Keep trying!');
         }
+    }
+}
 
         // New next game functions
         function showNextGameButton() {
