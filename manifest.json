@@ -2,12 +2,11 @@
   "name": "Tridoku",
   "short_name": "Tridoku",
   "description": "A unique Sudoku game with three ways to play: numbers, emojis, and fruits!",
-  "start_url": "./",
-  "scope": ".",
+  "start_url": "/",
   "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#9333EA",
+  "background_color": "#f3f4f6",
   "theme_color": "#9333EA",
+  "orientation": "portrait",
   "icons": [
     {
       "src": "icon-192.png",
