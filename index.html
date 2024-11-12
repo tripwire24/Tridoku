@@ -62,6 +62,7 @@
         }
     </style>
 </head>
+
 <body class="bg-gray-100 min-h-screen">
     <div class="container mx-auto px-4 py-8 max-w-md">
         <!-- Game Header -->
@@ -135,8 +136,7 @@
             </p>
         </div>
     </footer>
-
-    <script>
+<script>
         // Game state
         let gameType = 'Sudoku';
         let difficulty = 'Easy';
@@ -163,7 +163,7 @@
             }
         };
 
-        // Difficulty templates remain the same...
+        // Difficulty templates
         const DIFFICULTY_TEMPLATES = {
             Easy: [
                 [5,7,8,null,6,null,null,3,null],
@@ -200,7 +200,10 @@
             ]
         };
 
-        // Modified render board function to use dropdowns for all game types
+        // Solution board for validation
+        let solutionBoard;
+
+// Board rendering function
         function renderBoard() {
             const boardElement = document.getElementById('board');
             boardElement.innerHTML = '';
@@ -249,137 +252,75 @@
             });
         }
 
-        // Modified score functions
-        function updateScore(newScore) {
-            currentGameScore = newScore;
-            document.getElementById('total-score').textContent = `Total: ${totalScore + currentGameScore}`;
+        // Handle cell input and check completion
+        function handleCellInput(event, row, col) {
+            const value = event.target.value;
+            board[row][col] = value;
+            checkCompletion();
         }
 
-        function finalizeScore() {
-            totalScore += currentGameScore;
-            document.getElementById('total-score').textContent = `Total: ${totalScore}`;
-        }
-
-// Modify just this function in your existing code
-function checkCompletion() {
-    if (isBoardComplete()) {
-        if (validateBoard()) {
-            clearInterval(timerInterval);
-            const timeBonus = Math.max(0, 1000 - time);
-            const newScore = 1000 + timeBonus;
-            updateScore(newScore);
+        // Check if the board is complete and valid
+        function checkCompletion() {
+            const isComplete = board.every(row => row.every(cell => cell !== null && cell !== ''));
             
-            // Trigger confetti
-            confetti({
-                particleCount: 100,
-                spread: 70,
-                origin: { y: 0.6 }
-            });
+            if (isComplete) {
+                if (validateBoard()) {
+                    clearInterval(timerInterval);
+                    
+                    const timeBonus = Math.max(0, 1000 - time);
+                    const newScore = 1000 + timeBonus;
+                    updateScore(newScore);
+                    
+                    confetti({
+                        particleCount: 100,
+                        spread: 70,
+                        origin: { y: 0.6 }
+                    });
 
-            // Create and show the confirmation dialog
-            const confirmBox = document.createElement('div');
-            confirmBox.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
-            confirmBox.innerHTML = `
-                <div class="bg-white rounded-lg shadow-xl p-6 m-4 max-w-sm w-full">
-                    <div class="text-center">
-                        <h2 class="text-2xl font-bold text-purple-600 mb-4">
-                            Congratulations! 🎉
-                        </h2>
-                        <p class="text-gray-600 mb-4">
-                            You've completed the puzzle!
-                        </p>
-                        <p class="text-lg font-semibold text-purple-500 mb-6">
-                            Score: ${newScore} points
-                        </p>
-                        <div class="flex flex-col gap-3">
-                            <button
-                                onclick="handleNextGame()"
-                                class="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 px-6 rounded-lg font-semibold hover:from-purple-600 hover:to-pink-600 transition-all duration-200"
-                            >
-                                Next Game
-                            </button>
-                            <button
-                                onclick="closeConfirmBox()"
-                                class="w-full bg-gray-100 text-gray-700 py-3 px-6 rounded-lg font-semibold hover:bg-gray-200 transition-all duration-200"
-                            >
-                                Stay Here
-                            </button>
+                    const confirmBox = document.createElement('div');
+                    confirmBox.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+                    confirmBox.innerHTML = `
+                        <div class="bg-white rounded-lg shadow-xl p-6 m-4 max-w-sm w-full">
+                            <div class="text-center">
+                                <h2 class="text-2xl font-bold text-purple-600 mb-4">
+                                    Congratulations! 🎉
+                                </h2>
+                                <p class="text-gray-600 mb-4">
+                                    You've completed the puzzle!
+                                </p>
+                                <p class="text-lg font-semibold text-purple-500 mb-6">
+                                    Score: ${newScore} points
+                                </p>
+                                <div class="flex flex-col gap-3">
+                                    <button
+                                        onclick="handleNextGame()"
+                                        class="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 px-6 rounded-lg font-semibold hover:from-purple-600 hover:to-pink-600 transition-all duration-200"
+                                    >
+                                        Next Game
+                                    </button>
+                                    <button
+                                        onclick="closeConfirmBox()"
+                                        class="w-full bg-gray-100 text-gray-700 py-3 px-6 rounded-lg font-semibold hover:bg-gray-200 transition-all duration-200"
+                                    >
+                                        Stay Here
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(confirmBox);
-
-            // Add the handler for next game
-            window.handleNextGame = function() {
-                finalizeScore();
-                startNextGame();
-                closeConfirmBox();
-            };
-        } else {
-            showMessage('The solution is incorrect. Keep trying!');
-        }
-    }
-}
-
-        // New next game functions
-        function showNextGameButton() {
-            document.getElementById('next-game').classList.remove('hidden');
-        }
-
-        function hideNextGameButton() {
-            document.getElementById('next-game').classList.add('hidden');
-        }
-
-        function startNextGame() {
-            // Randomly select next game type
-            const types = Object.keys(GAME_TYPES);
-            const nextType = types[(types.indexOf(gameType) + 1) % types.length];
-            changeGameType(nextType);
-            hideNextGameButton();
-        }
-
-        // Modified initialization
-        function initializeBoard() {
-            generateSolutionBoard();
-            createPuzzle(difficulty);
-            if (gameType !== 'Sudoku') {
-                initialBoard = convertToSymbols(initialBoard);
-                board = convertToSymbols(board);
+                    `;
+                    document.body.appendChild(confirmBox);
+                } else {
+                    showMessage('The solution is incorrect. Keep trying!');
+                }
             }
-
-            renderBoard();
-            resetTimer();
-            startTimer();
-            updateScore(0);
-            hideMessage();
-            hideNextGameButton();
         }
 
-        // Solution board for validation
-        let solutionBoard;
-
-        // Convert number board to symbols based on game type
-        function convertToSymbols(numberBoard) {
-            return numberBoard.map(row => 
-                row.map(cell => 
-                    cell === null ? null : GAME_TYPES[gameType].symbols[cell - 1]
-                )
-            );
-        }
-
-        // Convert symbol back to number for validation
-        function symbolToNumber(symbol) {
-            return GAME_TYPES[gameType].symbols.indexOf(symbol) + 1;
-        }
-
-        // Generate a complete, valid solution board
+// Board generation and validation functions
         function generateSolutionBoard() {
             solutionBoard = Array(9).fill().map(() => Array(9).fill(null));
             fillBoard(solutionBoard);
         }
 
-        // Recursively fill the board to generate a valid Sudoku solution
         function fillBoard(board) {
             for (let row = 0; row < 9; row++) {
                 for (let col = 0; col < 9; col++) {
@@ -401,7 +342,6 @@ function checkCompletion() {
             return true;
         }
 
-        // Create a puzzle by removing numbers from the solution board based on difficulty
         function createPuzzle(difficulty) {
             let attempts = difficulty === 'Easy' ? 30 : difficulty === 'Medium' ? 40 : 50;
             board = solutionBoard.map(row => [...row]);
@@ -418,7 +358,7 @@ function checkCompletion() {
             }
         }
 
-        // Shuffle array elements
+        // Helper functions
         function shuffle(array) {
             for (let i = array.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
@@ -427,7 +367,6 @@ function checkCompletion() {
             return array;
         }
 
-        // Check if placing a number in a given cell is valid
         function isValid(board, row, col, num) {
             for (let x = 0; x < 9; x++) {
                 if (board[row][x] === num || board[x][col] === num) return false;
@@ -442,98 +381,7 @@ function checkCompletion() {
             return true;
         }
 
-        // Timer functions
-        function formatTime(seconds) {
-            const minutes = Math.floor(seconds / 60);
-            const remainingSeconds = seconds % 60;
-            return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
-        }
-
-        function startTimer() {
-            timerInterval = setInterval(() => {
-                time++;
-                document.getElementById('timer').textContent = formatTime(time);
-            }, 1000);
-        }
-
-        function resetTimer() {
-            clearInterval(timerInterval);
-            time = 0;
-            document.getElementById('timer').textContent = formatTime(time);
-        }
-
-        // Message functions
-        function showMessage(text) {
-            const messageEl = document.getElementById('message');
-            messageEl.textContent = text;
-            messageEl.classList.remove('hidden');
-        }
-
-        function hideMessage() {
-            document.getElementById('message').classList.add('hidden');
-        }
-
-        // Game control functions
-        function confirmNewGame() {
-            const confirmBox = document.createElement('div');
-            confirmBox.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center';
-            confirmBox.innerHTML = `
-                <div class="bg-white p-6 rounded-lg shadow-lg max-w-sm w-full">
-                    <h2 class="text-xl font-bold mb-4">Are you sure you want to start a new game?</h2>
-                    <div class="flex justify-end gap-4">
-                        <button onclick="closeConfirmBox()" class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">Cancel</button>
-                        <button onclick="newGame(); closeConfirmBox()" class="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600">Yes, Start New Game</button>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(confirmBox);
-        }
-
-        function closeConfirmBox() {
-            const confirmBox = document.querySelector('.fixed.inset-0.bg-black.bg-opacity-50');
-            if (confirmBox) {
-                confirmBox.remove();
-            }
-        }
-
-        function newGame() {
-            initializeBoard();
-        }
-
-        function resetBoard() {
-            board = initialBoard.map(row => [...row]);
-            renderBoard();
-            hideMessage();
-            hideNextGameButton();
-        }
-
-        function changeGameType(type) {
-            gameType = type;
-            document.querySelectorAll('[onclick^="changeGameType"]').forEach(button => {
-                if (button.textContent === type) {
-                    button.className = 'flex-1 py-3 px-4 rounded-lg text-center transition-all duration-200 font-medium bg-gradient-to-r from-purple-400 to-pink-400 text-white shadow-md';
-                } else {
-                    button.className = 'flex-1 py-3 px-4 rounded-lg text-center bg-white text-gray-700 shadow hover:shadow-md';
-                }
-            });
-            initializeBoard();
-        }
-
-        function changeDifficulty(level) {
-            difficulty = level;
-            document.querySelectorAll('[onclick^="changeDifficulty"]').forEach(button => {
-                if (button.textContent === level) {
-                    button.className = 'flex-1 py-3 px-4 rounded-lg text-center transition-all duration-200 font-medium bg-gradient-to-r from-purple-400 to-pink-400 text-white shadow-md';
-                } else {
-                    button.className = 'flex-1 py-3 px-4 rounded-lg text-center bg-white text-gray-700 shadow hover:shadow-md';
-                }
-            });
-            initializeBoard();
-        }
-
-        // Validation functions
         function validateBoard() {
-            // Convert emoji/fruit board back to numbers for validation
             const numericBoard = board.map(row =>
                 row.map(cell =>
                     cell === null ? null :
@@ -572,13 +420,161 @@ function checkCompletion() {
             return true;
         }
 
-        function isBoardComplete() {
-            return board.every(row => row.every(cell => cell !== null));
+// Timer functions
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
+        }
+
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                time++;
+                document.getElementById('timer').textContent = formatTime(time);
+            }, 1000);
+        }
+
+        function resetTimer() {
+            clearInterval(timerInterval);
+            time = 0;
+            document.getElementById('timer').textContent = formatTime(time);
+        }
+
+        // Score functions
+        function updateScore(newScore) {
+            currentGameScore = newScore;
+            document.getElementById('total-score').textContent = `Total: ${totalScore + currentGameScore}`;
+        }
+
+        function finalizeScore() {
+            totalScore += currentGameScore;
+            document.getElementById('total-score').textContent = `Total: ${totalScore}`;
+        }
+
+        // Message handling
+        function showMessage(text) {
+            const messageEl = document.getElementById('message');
+            messageEl.textContent = text;
+            messageEl.classList.remove('hidden');
+        }
+
+        function hideMessage() {
+            document.getElementById('message').classList.add('hidden');
+        }
+
+        // Game control functions
+        function confirmNewGame() {
+            const confirmBox = document.createElement('div');
+            confirmBox.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center';
+            confirmBox.innerHTML = `
+                <div class="bg-white p-6 rounded-lg shadow-lg max-w-sm w-full">
+                    <h2 class="text-xl font-bold mb-4">Are you sure you want to start a new game?</h2>
+                    <div class="flex justify-end gap-4">
+                        <button onclick="closeConfirmBox()" class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">Cancel</button>
+                        <button onclick="newGame(); closeConfirmBox()" class="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600">Yes, Start New Game</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(confirmBox);
+        }
+
+        function closeConfirmBox() {
+            const confirmBox = document.querySelector('.fixed.inset-0.bg-black.bg-opacity-50');
+            if (confirmBox) {
+                confirmBox.remove();
+            }
+        }
+
+        window.handleNextGame = function() {
+            finalizeScore();
+            startNextGame();
+            closeConfirmBox();
+        };
+
+        function newGame() {
+            initializeBoard();
+        }
+
+        function resetBoard() {
+            board = initialBoard.map(row => [...row]);
+            renderBoard();
+            hideMessage();
+            hideNextGameButton();
+        }
+
+        function changeGameType(type) {
+            gameType = type;
+            document.querySelectorAll('[onclick^="changeGameType"]').forEach(button => {
+                if (button.textContent === type) {
+                    button.className = 'flex-1 py-3 px-4 rounded-lg text-center transition-all duration-200 font-medium bg-gradient-to-r from-purple-400 to-pink-400 text-white shadow-md';
+                } else {
+                    button.className = 'flex-1 py-3 px-4 rounded-lg text-center bg-white text-gray-700 shadow hover:shadow-md';
+                }
+            });
+            initializeBoard();
+        }
+
+        function changeDifficulty(level) {
+            difficulty = level;
+            document.querySelectorAll('[onclick^="changeDifficulty"]').forEach(button => {
+                if (button.textContent === level) {
+                    button.className = 'flex-1 py-3 px-4 rounded-lg text-center transition-all duration-200 font-medium bg-gradient-to-r from-purple-400 to-pink-400 text-white shadow-md';
+                } else {
+                    button.className = 'flex-1 py-3 px-4 rounded-lg text-center bg-white text-gray-700 shadow hover:shadow-md';
+                }
+            });
+            initializeBoard();
+        }
+
+        // Symbol conversion
+        function convertToSymbols(numberBoard) {
+            return numberBoard.map(row => 
+                row.map(cell => 
+                    cell === null ? null : GAME_TYPES[gameType].symbols[cell - 1]
+                )
+            );
+        }
+
+        function symbolToNumber(symbol) {
+            return GAME_TYPES[gameType].symbols.indexOf(symbol) + 1;
+        }
+
+        // Next game functions
+        function showNextGameButton() {
+            document.getElementById('next-game').classList.remove('hidden');
+        }
+
+        function hideNextGameButton() {
+            document.getElementById('next-game').classList.add('hidden');
+        }
+
+        function startNextGame() {
+            const types = Object.keys(GAME_TYPES);
+            const nextType = types[(types.indexOf(gameType) + 1) % types.length];
+            changeGameType(nextType);
+            hideNextGameButton();
+        }
+
+        // Board initialization
+        function initializeBoard() {
+            generateSolutionBoard();
+            createPuzzle(difficulty);
+            if (gameType !== 'Sudoku') {
+                initialBoard = convertToSymbols(initialBoard);
+                board = convertToSymbols(board);
+            }
+            renderBoard();
+            resetTimer();
+            startTimer();
+            updateScore(0);
+            hideMessage();
+            hideNextGameButton();
         }
 
         // Initialize game on load
         initializeBoard();
     </script>
+
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -595,3 +591,5 @@ function checkCompletion() {
     </script>
 </body>
 </html>
+
+
