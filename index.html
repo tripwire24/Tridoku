@@ -60,6 +60,36 @@
         .number-cell {
             font-size: 1.125rem;
         }
+         @media (max-width: 768px) {
+        .cell-input {
+            font-size: 1rem;
+            padding: 0;
+        }
+        
+        .emoji-cell {
+            font-size: 1.25rem;
+        }
+        
+        .fruit-cell {
+            font-size: 1rem;
+        }
+        
+        /* Prevent zoom on input focus in iOS */
+        select, input {
+            font-size: 16px !important;
+        }
+        
+        /* Fix for iOS safe areas */
+        .container {
+            padding-bottom: env(safe-area-inset-bottom);
+            padding-top: env(safe-area-inset-top);
+        }
+    }
+    
+    /* Prevent pull-to-refresh on mobile */
+    html, body {
+        overscroll-behavior-y: contain;
+    }
     </style>
 </head>
 
@@ -576,19 +606,51 @@
     </script>
 
     <!-- Service Worker Registration -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(registration => {
-                        console.log('ServiceWorker registration successful');
-                    })
-                    .catch(err => {
-                        console.log('ServiceWorker registration failed: ', err);
+// Replace your existing service worker registration with this:
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js', { scope: './' })
+                .then(registration => {
+                    console.log('ServiceWorker registration successful with scope:', registration.scope);
+                    
+                    // Check for updates
+                    registration.addEventListener('updatefound', () => {
+                        const newWorker = registration.installing;
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed') {
+                                if (navigator.serviceWorker.controller) {
+                                    // New content is available, show refresh button
+                                    showUpdateNotification();
+                                }
+                            }
+                        });
                     });
-            });
-        }
-    </script>
+                })
+                .catch(error => {
+                    console.error('ServiceWorker registration failed:', error);
+                });
+        });
+    }
+
+    // Add update notification
+    function showUpdateNotification() {
+        const notification = document.createElement('div');
+        notification.className = 'fixed bottom-20 left-0 right-0 mx-auto w-max bg-purple-600 text-white px-4 py-2 rounded-lg shadow-lg';
+        notification.innerHTML = `
+            <div class="flex items-center gap-2">
+                <span>New version available!</span>
+                <button 
+                    onclick="window.location.reload()" 
+                    class="bg-white text-purple-600 px-2 py-1 rounded text-sm"
+                >
+                    Refresh
+                </button>
+            </div>
+        `;
+        document.body.appendChild(notification);
+    }
+</script>
 </body>
 </html>
 
