@@ -28,6 +28,30 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
     <style>
+        /* Install banner styles */
+        .install-banner {
+            background: #9333EA;
+            transform: translateY(100%);
+            transition: transform 0.3s ease-in-out;
+        }
+
+        .install-banner.show {
+            transform: translateY(0);
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(100%);
+            }
+            to {
+                transform: translateY(0);
+            }
+        }
+
+        .slide-up {
+            animation: slideUp 0.3s ease-in-out forwards;
+        }
+
         .animate-pulse {
             animation: pulse 1s cubic-bezier(0.4, 0, 0.6, 1);
         }
@@ -60,39 +84,38 @@
         .number-cell {
             font-size: 1.125rem;
         }
-         @media (max-width: 768px) {
-        .cell-input {
-            font-size: 1rem;
-            padding: 0;
+        @media (max-width: 768px) {
+            .cell-input {
+                font-size: 1rem;
+                padding: 0;
+            }
+            
+            .emoji-cell {
+                font-size: 1.25rem;
+            }
+            
+            .fruit-cell {
+                font-size: 1rem;
+            }
+            
+            /* Prevent zoom on input focus in iOS */
+            select, input {
+                font-size: 16px !important;
+            }
+            
+            /* Fix for iOS safe areas */
+            .container {
+                padding-bottom: env(safe-area-inset-bottom);
+                padding-top: env(safe-area-inset-top);
+            }
         }
         
-        .emoji-cell {
-            font-size: 1.25rem;
+        /* Prevent pull-to-refresh on mobile */
+        html, body {
+            overscroll-behavior-y: contain;
         }
-        
-        .fruit-cell {
-            font-size: 1rem;
-        }
-        
-        /* Prevent zoom on input focus in iOS */
-        select, input {
-            font-size: 16px !important;
-        }
-        
-        /* Fix for iOS safe areas */
-        .container {
-            padding-bottom: env(safe-area-inset-bottom);
-            padding-top: env(safe-area-inset-top);
-        }
-    }
-    
-    /* Prevent pull-to-refresh on mobile */
-    html, body {
-        overscroll-behavior-y: contain;
-    }
     </style>
 </head>
-
 <body class="bg-gray-100 min-h-screen">
     <div class="container mx-auto px-4 py-8 max-w-md">
         <!-- Game Header -->
@@ -157,6 +180,23 @@
             Next Game
         </button>
     </div>
+    <!-- Install Prompt UI -->
+    <div id="installPrompt" class="install-banner fixed bottom-0 left-0 right-0 p-4 hidden z-50">
+        <div class="max-w-md mx-auto flex items-center justify-between px-4">
+            <div class="flex-1">
+                <h3 class="text-lg font-semibold text-white">Install Tridoku</h3>
+                <p class="text-sm text-white text-opacity-90 mt-1">Add to your home screen for quick access</p>
+            </div>
+            <div class="flex items-center gap-3 ml-4">
+                <button id="dismissInstall" class="px-3 py-2 text-sm text-white text-opacity-80 hover:text-opacity-100 transition-opacity">
+                    Not now
+                </button>
+                <button id="installButton" class="px-4 py-2 bg-white text-purple-600 text-sm rounded-lg shadow-sm hover:bg-opacity-90 transition-colors">
+                    Install
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- Footer -->
     <footer class="fixed bottom-0 left-0 right-0 bg-white bg-opacity-90 shadow-lg">
@@ -166,7 +206,7 @@
             </p>
         </div>
     </footer>
-<script>
+    <script>
         // Game state
         let gameType = 'Sudoku';
         let difficulty = 'Easy';
@@ -233,7 +273,7 @@
         // Solution board for validation
         let solutionBoard;
 
-// Board rendering function
+        // Board rendering function
         function renderBoard() {
             const boardElement = document.getElementById('board');
             boardElement.innerHTML = '';
@@ -344,8 +384,7 @@
                 }
             }
         }
-
-// Board generation and validation functions
+        // Board generation and validation functions
         function generateSolutionBoard() {
             solutionBoard = Array(9).fill().map(() => Array(9).fill(null));
             fillBoard(solutionBoard);
@@ -450,7 +489,7 @@
             return true;
         }
 
-// Timer functions
+        // Timer functions
         function formatTime(seconds) {
             const minutes = Math.floor(seconds / 60);
             const remainingSeconds = seconds % 60;
@@ -469,7 +508,6 @@
             time = 0;
             document.getElementById('timer').textContent = formatTime(time);
         }
-
         // Score functions
         function updateScore(newScore) {
             currentGameScore = newScore;
@@ -605,8 +643,48 @@
         initializeBoard();
     </script>
 
-    <!-- Service Worker Registration -->
-<script>
+    <!-- Install Banner Script -->
+    <script>
+    let deferredPrompt;
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+        console.log('beforeinstallprompt triggered');
+        e.preventDefault();
+        deferredPrompt = e;
+        console.log('Install prompt stored');
+        const installPrompt = document.getElementById('installPrompt');
+        installPrompt.classList.remove('hidden');
+        setTimeout(() => {
+            installPrompt.classList.add('slide-up');
+        }, 10);
+    });
+
+    // Handle Install Button Click
+    document.getElementById('installButton').addEventListener('click', async () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            deferredPrompt = null;
+            const installPrompt = document.getElementById('installPrompt');
+            installPrompt.style.transform = 'translateY(100%)';
+            setTimeout(() => {
+                installPrompt.classList.add('hidden');
+                installPrompt.style.transform = '';
+            }, 300);
+        }
+    });
+
+    // Handle Dismiss Button Click
+    document.getElementById('dismissInstall').addEventListener('click', () => {
+        const installPrompt = document.getElementById('installPrompt');
+        installPrompt.style.transform = 'translateY(100%)';
+        setTimeout(() => {
+            installPrompt.classList.add('hidden');
+            installPrompt.style.transform = '';
+        }, 300);
+    });
+
+    // Service Worker Registration
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('./sw.js', { scope: './' })
@@ -649,8 +727,6 @@
         `;
         document.body.appendChild(notification);
     }
-</script>
+    </script>
 </body>
 </html>
-
-
